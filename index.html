@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>세계수 출석체크</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0/js/select2.min.js"></script>
     <style>
         body {
             display: flex;
@@ -48,14 +50,19 @@
             width: 3rem;
             height: 3rem;
         }
+        
     </style>
 </head>
 <body>
     <div class="container mt-4">
         <h1>세계수 출석체크</h1>
-        <div class="input-group flex-nowrap mb-3">
-            <span class="input-group-text" id="addon-wrapping">닉네임</span>
-            <input type="text" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="addon-wrapping" id="usernameInput">
+        <div class="input-group flex-nowrap">
+            <div class="input-group flex-nowrap mb-3">
+                <label class="input-group-text" for="usernameSelect">닉네임</label>
+                <select class="form-select" id="usernameSelect">
+                    <option selected disabled>닉네임을 선택하세요</option>
+                </select>
+            </div>
         </div>
 
         <div class="input-group mb-3">
@@ -92,45 +99,101 @@
         const db = firebase.firestore();
         const storage = firebase.storage();
 
-        $('#send').click(function() {
-            var username = document.querySelector('#usernameInput').value.trim();
-            var file = document.querySelector('#inputGroupFile01').files[0]; 
+        $('#send').click(function () {
+    var username = document.querySelector('#usernameSelect').value.trim();
+    var file = document.querySelector('#inputGroupFile01').files[0];
 
-            if (!username || !file) {
-                alert('닉네임과 파일을 모두 입력해주세요.');
-                return;
+    if (!username || !file) {
+        alert('닉네임과 파일을 모두 입력해주세요.');
+        return;
+    }
+
+    var loadingOverlay = document.getElementById('loadingOverlay');
+    loadingOverlay.classList.add('active'); // 로딩 화면 활성화
+
+    var reader = new FileReader();
+    reader.onload = function (event) {
+        var img = new Image();
+        img.onload = function () {
+            // 원본 이미지를 캔버스에 그리기
+            var canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // WebP 형식으로 Blob 생성
+            canvas.toBlob(function (blob) {
+                var currentDate = new Date();
+                var year = currentDate.getFullYear();
+                var month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                var day = String(currentDate.getDate()).padStart(2, '0');
+                var formattedDate = `${year}-${month}-${day}`;
+
+                var hours = String(currentDate.getHours()).padStart(2, '0');
+                var minutes = String(currentDate.getMinutes()).padStart(2, '0');
+                var seconds = String(currentDate.getSeconds()).padStart(2, '0');
+                var formattedTime = `${hours}-${minutes}-${seconds}`;
+
+                var newFileName = `${username}_${formattedTime}.webp`;
+
+                var storageRef = storage.ref();
+                var src = storageRef.child(`${formattedDate}/${username}/${newFileName}`);
+
+                // WebP Blob 업로드
+                var upload = src.put(blob);
+
+                upload
+                    .then(function (snapshot) {
+                        loadingOverlay.classList.remove('active'); // 로딩 화면 비활성화
+                        alert('출석체크가 완료되었습니다.');
+                    })
+                    .catch(function (error) {
+                        loadingOverlay.classList.remove('active'); // 로딩 화면 비활성화
+                        alert('파일 업로드 중 오류가 발생했습니다.');
+                    });
+            }, 'image/webp', 0.8); // WebP 형식 및 압축 품질 설정
+        };
+
+        img.src = event.target.result;
+    };
+
+    reader.readAsDataURL(file);
+});
+
+
+        // guild.csv 파일 경로 (정적 파일로 서버에 호스팅되어야 함)
+const csvFilePath = './guild.csv';
+
+// 드롭다운 초기화
+const usernameSelect = document.getElementById('usernameSelect');
+
+// CSV 파일 가져오기 및 드롭다운 구성
+fetch(csvFilePath)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('CSV 파일을 로드할 수 없습니다.');
+        }
+        return response.text();
+    })
+    .then(data => {
+        const rows = data.split('\n'); // 줄 단위로 분리
+        const guildNames = rows.map(row => row.split(',')[0].trim()); // 첫 번째 열 추출
+
+        // 드롭다운 목록 추가
+        guildNames.forEach((guild, index) => {
+            if (guild && index !== 0) { // 헤더 제외
+                const option = document.createElement('option');
+                option.value = guild;
+                option.textContent = guild;
+                usernameSelect.appendChild(option);
             }
-
-            var loadingOverlay = document.getElementById('loadingOverlay');
-            loadingOverlay.classList.add('active'); // 로딩 화면 활성화
-
-            var currentDate = new Date();
-            var year = currentDate.getFullYear();
-            var month = String(currentDate.getMonth() + 1).padStart(2, '0');
-            var day = String(currentDate.getDate()).padStart(2, '0');
-            var formattedDate = `${year}-${month}-${day}`;
-
-            var hours = String(currentDate.getHours()).padStart(2, '0');
-            var minutes = String(currentDate.getMinutes()).padStart(2, '0');
-            var seconds = String(currentDate.getSeconds()).padStart(2, '0');
-            var formattedTime = `${hours}-${minutes}-${seconds}`;
-
-            var fileExtension = file.name.split('.').pop(); 
-            var newFileName = `${username}_${formattedTime}.${fileExtension}`;
-
-            var storageRef = storage.ref();
-            var src = storageRef.child(`${formattedDate}/${username}/${newFileName}`);
-
-            var upload = src.put(file);
-
-            upload.then(function(snapshot) {
-                loadingOverlay.classList.remove('active'); // 로딩 화면 비활성화
-                alert('파일 업로드가 완료되었습니다.');
-            }).catch(function(error) {
-                loadingOverlay.classList.remove('active'); // 로딩 화면 비활성화
-                alert('파일 업로드 중 오류가 발생했습니다.');
-            });
         });
+    })
+    .catch(error => {
+        console.error('CSV 파일 로드 중 오류:', error);
+    });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core/dist/umd/popper.min.js" crossorigin="anonymous"></script>
