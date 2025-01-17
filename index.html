@@ -3,89 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>세계수 출석체크</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0/js/select2.min.js"></script>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh; 
-            margin: 0; 
-        }
-
-        .container {
-            max-width: 400px;
-            text-align: center;
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-        }
-
-        /* 로딩 화면 스타일 */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            visibility: hidden;
-        }
-
-        .loading-overlay.active {
-            visibility: visible;
-        }
-
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
-        }
-        
-    </style>
+    <title>세계수 출석체크</title>
+    <script src="https://www.gstatic.com/firebasejs/9.20.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.20.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.20.0/firebase-database-compat.js"></script>
 </head>
+<style>
+    .main-container {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding-top: 50px;
+        padding-bottom: 50px;
+    }
+</style>
 <body>
-    <div class="container mt-4">
-        <h1>세계수 출석체크</h1>
-        <div class="input-group flex-nowrap">
-            <div class="input-group flex-nowrap mb-3">
-                <label class="input-group-text" for="usernameSelect">닉네임</label>
-                <select class="form-select" id="usernameSelect">
-                    <option selected disabled>닉네임을 선택하세요</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="input-group mb-3">
-            <input type="file" class="form-control" id="inputGroupFile01" accept="image/*">
-        </div>
-        <button type="button" class="btn btn-primary w-100" id="send">제출</button>
+    <div class="main-container">
+        <div id="card-container" class="d-flex flex-wrap gap-3 justify-content-center"></div>
     </div>
-
-    <!-- 로딩 화면 -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner-border text-light" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.6.5/firebase-storage.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-
     <script>
-        var firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyB687ow_NvAJxJdLaSfke6hOalFujAeJ50",
             authDomain: "dsr1-59d0e.firebaseapp.com",
             projectId: "dsr1-59d0e",
@@ -94,109 +33,163 @@
             appId: "1:393673268086:web:42409e7320c0ad4d99f857",
             measurementId: "G-V5VLCXSKM7"
         };
-        firebase.initializeApp(firebaseConfig);
 
-        const db = firebase.firestore();
+        firebase.initializeApp(firebaseConfig);
         const storage = firebase.storage();
 
-        $('#send').click(function () {
-    var username = document.querySelector('#usernameSelect').value.trim();
-    var file = document.querySelector('#inputGroupFile01').files[0];
-
-    if (!username || !file) {
-        alert('닉네임과 파일을 모두 입력해주세요.');
-        return;
-    }
-
-    var loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.classList.add('active'); // 로딩 화면 활성화
-
-    var reader = new FileReader();
-    reader.onload = function (event) {
-        var img = new Image();
-        img.onload = function () {
-            // 원본 이미지를 캔버스에 그리기
-            var canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-
-            // WebP 형식으로 Blob 생성
-            canvas.toBlob(function (blob) {
-                var currentDate = new Date();
-                var year = currentDate.getFullYear();
-                var month = String(currentDate.getMonth() + 1).padStart(2, '0');
-                var day = String(currentDate.getDate()).padStart(2, '0');
-                var formattedDate = `${year}-${month}-${day}`;
-
-                var hours = String(currentDate.getHours()).padStart(2, '0');
-                var minutes = String(currentDate.getMinutes()).padStart(2, '0');
-                var seconds = String(currentDate.getSeconds()).padStart(2, '0');
-                var formattedTime = `${hours}-${minutes}-${seconds}`;
-
-                var newFileName = `${username}_${formattedTime}.webp`;
-
-                var storageRef = storage.ref();
-                var src = storageRef.child(`${formattedDate}/${username}/${newFileName}`);
-
-                // WebP Blob 업로드
-                var upload = src.put(blob);
-
-                upload
-                    .then(function (snapshot) {
-                        loadingOverlay.classList.remove('active'); // 로딩 화면 비활성화
-                        alert('출석체크가 완료되었습니다.');
-                    })
-                    .catch(function (error) {
-                        loadingOverlay.classList.remove('active'); // 로딩 화면 비활성화
-                        alert('파일 업로드 중 오류가 발생했습니다.');
-                    });
-            }, 'image/webp', 0.8); // WebP 형식 및 압축 품질 설정
-        };
-
-        img.src = event.target.result;
-    };
-
-    reader.readAsDataURL(file);
-});
-
-
-        // guild.csv 파일 경로 (정적 파일로 서버에 호스팅되어야 함)
-const csvFilePath = './guild.csv';
-
-// 드롭다운 초기화
-const usernameSelect = document.getElementById('usernameSelect');
-
-// CSV 파일 가져오기 및 드롭다운 구성
-fetch(csvFilePath)
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('CSV 파일을 로드할 수 없습니다.');
+        async function fetchCSV(file) {
+            const response = await fetch(file);
+            const data = await response.text();
+            return parseCSV(data);
         }
-        return response.text();
-    })
-    .then(data => {
-        const rows = data.split('\n'); // 줄 단위로 분리
-        const guildNames = rows.map(row => row.split(',')[0].trim()); // 첫 번째 열 추출
 
-        // 드롭다운 목록 추가
-        guildNames.forEach((guild, index) => {
-            if (guild && index !== 0) { // 헤더 제외
-                const option = document.createElement('option');
-                option.value = guild;
-                option.textContent = guild;
-                usernameSelect.appendChild(option);
+        function parseCSV(data) {
+            const rows = data.split('\n').filter(row => row.trim() !== '');
+            return rows.map(row => {
+                const columns = row.split(',');
+                return { title: columns[0], text: columns[1] || '' };
+            });
+        }
+
+        function createCards(data) {
+            const container = document.getElementById('card-container');
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.width = '18rem';
+
+                const isDatePresent = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(item.text);
+                const cardStyle = isDatePresent ? 'background-color: #DFFFD6; color: #000;' : '';
+                const buttonDisabled = isDatePresent;
+                const buttonClass = isDatePresent ? 'btn-secondary' : 'btn-primary';
+                const buttonText = isDatePresent ? '제출완료' : '제출하기';
+
+                card.innerHTML = `
+                    <div class="card-body" style="${cardStyle}">
+                        <h5 class="card-title" style="font-weight:bold;">${item.title}</h5>
+                        <p class="card-text">제출시간: ${item.text}</p>
+                        <input type="file" class="form-control mb-3" accept="image/*" ${buttonDisabled ? 'disabled' : ''}>
+                        <button class="btn ${buttonClass} submit-btn w-100" ${buttonDisabled ? 'disabled' : ''}>${buttonText}</button>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                if (!isDatePresent) {
+                    const submitBtn = card.querySelector('.submit-btn');
+                    const fileInput = card.querySelector('input[type="file"]');
+
+                    submitBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        if (fileInput.files.length > 0) {
+                            const file = fileInput.files[0];
+                            const webpFile = await convertToWebp(file);
+                            const koreanTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+                            const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                            const formattedTime = koreanTime.replace(/[:]/g, '-').replace(/[,]/g, '');
+                            const folderPath = `${sanitizeFilename(koreanDate)}/${sanitizeFilename(item.title)}`;
+                            const filename = `${folderPath}/${sanitizeFilename(formattedTime)}_${sanitizeFilename(webpFile.name)}`;
+                            const storageRef = storage.ref(filename);
+
+                            try {
+                                await storageRef.put(webpFile);
+                                alert(`제출 완료!`);
+                                submitBtn.textContent = '제출완료';
+                                submitBtn.setAttribute('disabled', true);
+                                submitBtn.classList.remove('btn-primary');
+                                submitBtn.classList.add('btn-secondary');
+                                fileInput.setAttribute('disabled', true);
+                            } catch (error) {
+                                console.error("Upload failed", error.serverResponse || error.message);
+                                alert(`업로드 실패: ${error.serverResponse || error.message}`);
+                            }
+                        } else {
+                            alert('이미지 파일을 선택해주세요.');
+                        }
+                    });
+                }
+            });
+        }
+
+        async function convertToWebp(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        canvas.toBlob(
+                            (blob) => {
+                                if (blob) {
+                                    const webpFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.webp'), { type: 'image/webp' });
+                                    resolve(webpFile);
+                                } else {
+                                    reject(new Error('Conversion to WebP failed.'));
+                                }
+                            },
+                            'image/webp',
+                            0.8
+                        );
+                    };
+                    img.onerror = reject;
+                    img.src = event.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        (async () => {
+            const storage = firebase.storage();
+            const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+            const todayFolderPath = `${koreanDate}`;
+
+            async function listSubFolders(folderPath) {
+                const folderRef = storage.ref(folderPath);
+                const result = await folderRef.listAll();
+                return result.prefixes;
             }
-        });
-    })
-    .catch(error => {
-        console.error('CSV 파일 로드 중 오류:', error);
-    });
-    </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core/dist/umd/popper.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+            async function getFolderFilesMetadata(folderPath) {
+                const folderRef = storage.ref(folderPath);
+                const result = await folderRef.listAll();
+                return await Promise.all(result.items.map(async (itemRef) => {
+                    const metadata = await itemRef.getMetadata();
+                    return { fileName: itemRef.name, updated: metadata.updated };
+                }));
+            }
+
+            async function updateCardTimes(cards, folderPath) {
+                const subFolders = await listSubFolders(folderPath);
+                for (const folder of subFolders) {
+                    const folderName = decodeURIComponent(folder.name);
+                    const matchingCard = cards.find(card => card.title.trim() === folderName.trim());
+
+                    if (matchingCard) {
+                        const filesMetadata = await getFolderFilesMetadata(folder.fullPath);
+                        if (filesMetadata.length > 0) {
+                            const latestFile = filesMetadata.reduce((latest, current) =>
+                                new Date(current.updated) > new Date(latest.updated) ? current : latest
+                            );
+                            const updatedDate = new Date(latestFile.updated);
+                            const formattedDate = updatedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                            const formattedTime = updatedDate.toLocaleTimeString("en-US", { timeZone: "Asia/Seoul", hour12: false });
+                            matchingCard.text = `${formattedDate} ${formattedTime}`;
+                        } else {
+                            matchingCard.text = 'No files found';
+                        }
+                    }
+                }
+            }
+
+            const data = await fetchCSV('guild.csv');
+            await updateCardTimes(data, todayFolderPath);
+            createCards(data);
+        })();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>
