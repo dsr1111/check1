@@ -18,10 +18,35 @@
         padding-top: 50px;
         padding-bottom: 50px;
     }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        color: white;
+    }
 </style>
 <body>
     <div class="main-container">
         <div id="card-container" class="d-flex flex-wrap gap-3 justify-content-center"></div>
+    </div>
+
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
     <script>
         const firebaseConfig = {
@@ -84,20 +109,30 @@
                             .replace(/_+$/g, '');
                     };
 
+                    const loadingOverlay = document.getElementById('loading-overlay');
+
+                    function showLoading() {
+                        loadingOverlay.style.display = 'flex';
+                    }
+
+                    function hideLoading() {
+                        loadingOverlay.style.display = 'none';
+                    }
 
                     submitBtn.addEventListener('click', async (e) => {
                         e.preventDefault();
                         if (fileInput.files.length > 0) {
-                            const file = fileInput.files[0];
-                            const webpFile = await convertToWebp(file);
-                            const koreanTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" });
-                            const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-                            const formattedTime = koreanTime.replace(/[:]/g, '-').replace(/[,]/g, '');
-                            const folderPath = `${sanitizeFilename(koreanDate)}/${sanitizeFilename(item.title)}`;
-                            const filename = `${folderPath}/${sanitizeFilename(formattedTime)}_${sanitizeFilename(webpFile.name)}`;
-                            const storageRef = storage.ref(filename);
-
                             try {
+                                showLoading(); // 로딩 오버레이 표시
+                                const file = fileInput.files[0];
+                                const webpFile = await convertToWebp(file);
+                                const koreanTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" });
+                                const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                                const formattedTime = koreanTime.replace(/[:]/g, '-').replace(/[,]/g, '');
+                                const folderPath = `${sanitizeFilename(koreanDate)}/${sanitizeFilename(item.title)}`;
+                                const filename = `${folderPath}/${sanitizeFilename(formattedTime)}_${sanitizeFilename(webpFile.name)}`;
+                                const storageRef = storage.ref(filename);
+
                                 await storageRef.put(webpFile);
                                 alert(`제출 완료!`);
                                 submitBtn.textContent = '제출완료';
@@ -108,6 +143,8 @@
                             } catch (error) {
                                 console.error("Upload failed", error.serverResponse || error.message);
                                 alert(`업로드 실패: ${error.serverResponse || error.message}`);
+                            } finally {
+                                hideLoading(); // 로딩 오버레이 숨김
                             }
                         } else {
                             alert('이미지 파일을 선택해주세요.');
