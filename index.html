@@ -78,6 +78,13 @@
                     const submitBtn = card.querySelector('.submit-btn');
                     const fileInput = card.querySelector('input[type="file"]');
 
+                    const sanitizeFilename = (filename) => {
+                        return filename
+                            .replace(/[^가-힣a-zA-Z0-9-_]/g, '_')
+                            .replace(/_+$/g, '');
+                    };
+
+
                     submitBtn.addEventListener('click', async (e) => {
                         e.preventDefault();
                         if (fileInput.files.length > 0) {
