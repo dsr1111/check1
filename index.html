@@ -93,7 +93,7 @@
 <body>
     <div class="modal-overlay" id="image-modal">
         <div class="modal-content">
-            <img src="" alt="Enlarged Image">
+            <img loading="lazy" src="" alt="Enlarged Image">
         </div>
     </div>
 
@@ -218,7 +218,7 @@
                     function showImageInPasteArea(file) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
-                            pasteArea.innerHTML = `<img src="${e.target.result}" alt="Pasted Image">`;
+                            pasteArea.innerHTML = `<img loading="lazy" src="${e.target.result}" alt="Pasted Image">`;
                         };
                         reader.readAsDataURL(file);
                     }
