@@ -37,6 +37,24 @@
         height: 3rem;
         color: white;
     }
+
+    #paste-area {
+        border: 2px dashed #6c757d;
+        padding: 20px;
+        text-align: center;
+        color: #6c757d;
+        margin-bottom: 15px;
+        position: relative;
+    }
+
+    #paste-area img {
+        max-width: 100%;
+        max-height: 200px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 5px;
+        margin-top: 10px;
+    }
 </style>
 <body>
     <div class="main-container">
@@ -92,8 +110,9 @@
                 card.innerHTML = `
                     <div class="card-body" style="${cardStyle}">
                         <h5 class="card-title" style="font-weight:bold;">${item.title}</h5>
-                        <p class="card-text">제출시간 : ${item.text}</p>
+                        <p class="card-text">제출시간: ${item.text}</p>
                         <input type="file" class="form-control mb-3" accept="image/*" ${buttonDisabled ? 'disabled' : ''}>
+                        <div id="paste-area">복사한 이미지 붙여넣기<br>(Ctrl + V)</div>
                         <button class="btn ${buttonClass} submit-btn w-100" ${buttonDisabled ? 'disabled' : ''}>${buttonText}</button>
                     </div>
                 `;
@@ -102,6 +121,7 @@
                 if (!isDatePresent) {
                     const submitBtn = card.querySelector('.submit-btn');
                     const fileInput = card.querySelector('input[type="file"]');
+                    const pasteArea = card.querySelector('#paste-area');
 
                     const sanitizeFilename = (filename) => {
                         return filename
@@ -117,6 +137,14 @@
 
                     function hideLoading() {
                         loadingOverlay.style.display = 'none';
+                    }
+
+                    function showImageInPasteArea(file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            pasteArea.innerHTML = `<img src="${e.target.result}" alt="Pasted Image">`;
+                        };
+                        reader.readAsDataURL(file);
                     }
 
                     submitBtn.addEventListener('click', async (e) => {
@@ -148,6 +176,28 @@
                             }
                         } else {
                             alert('이미지 파일을 선택해주세요.');
+                        }
+                    });
+
+                    pasteArea.addEventListener('paste', (event) => {
+                        const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+                        for (const item of items) {
+                            if (item.type.startsWith('image/')) {
+                                const file = item.getAsFile();
+                                if (file) {
+                                    const dataTransfer = new DataTransfer();
+                                    dataTransfer.items.add(file);
+                                    fileInput.files = dataTransfer.files;
+                                    showImageInPasteArea(file);
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
+                    fileInput.addEventListener('change', () => {
+                        if (fileInput.files.length > 0) {
+                            showImageInPasteArea(fileInput.files[0]);
                         }
                     });
                 }
