@@ -124,7 +124,6 @@
         async function fetchCSV(file) {
             const response = await fetch(file);
             const data = await response.text();
-            console.log(data);
             return parseCSV(data);
             
         }
