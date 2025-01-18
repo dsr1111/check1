@@ -93,7 +93,7 @@
 <body>
     <div class="modal-overlay" id="image-modal">
         <div class="modal-content">
-            <img loading="lazy" src="" alt="Enlarged Image">
+            <img src="" alt="Enlarged Image">
         </div>
     </div>
 
@@ -124,7 +124,9 @@
         async function fetchCSV(file) {
             const response = await fetch(file);
             const data = await response.text();
+            console.log(data);
             return parseCSV(data);
+            
         }
 
         function parseCSV(data) {
@@ -132,7 +134,19 @@
             return rows.map(row => {
                 const columns = row.split(',');
                 return { title: columns[0], text: columns[1] || '' };
+                
             });
+            
+        }
+
+        function showLoading() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.style.display = 'none';
         }
 
         function createCards(data) {
@@ -218,7 +232,7 @@
                     function showImageInPasteArea(file) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
-                            pasteArea.innerHTML = `<img loading="lazy" src="${e.target.result}" alt="Pasted Image">`;
+                            pasteArea.innerHTML = `<img src="${e.target.result}" alt="Pasted Image">`;
                         };
                         reader.readAsDataURL(file);
                     }
@@ -227,7 +241,7 @@
                         e.preventDefault();
                         if (fileInput.files.length > 0) {
                             try {
-                                showLoading(); // 로딩 오버레이 표시
+                                showLoading();
                                 const file = fileInput.files[0];
                                 const webpFile = await convertToWebp(file);
                                 const koreanTime = new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" });
@@ -249,7 +263,7 @@
                                 console.error("Upload failed", error.serverResponse || error.message);
                                 alert(`업로드 실패: ${error.serverResponse || error.message}`);
                             } finally {
-                                hideLoading(); // 로딩 오버레이 숨김
+                                hideLoading(); 
                             }
                         } else {
                             alert('이미지 파일을 선택해주세요.');
@@ -314,69 +328,88 @@
         }
 
         (async () => {
-            const storage = firebase.storage();
-            const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-            const todayFolderPath = `${koreanDate}`;
+    const loadingOverlay = document.getElementById('loading-overlay');
 
-            async function listSubFolders(folderPath) {
-                const folderRef = storage.ref(folderPath);
-                const result = await folderRef.listAll();
-                return result.prefixes;
-            }
+    function showLoading() {
+        loadingOverlay.style.display = 'flex';
+    }
 
-            async function getFolderFilesMetadata(folderPath) {
-                const folderRef = storage.ref(folderPath);
-                const result = await folderRef.listAll();
-                return await Promise.all(result.items.map(async (itemRef) => {
-                    const metadata = await itemRef.getMetadata();
-                    return { fileName: itemRef.name, updated: metadata.updated };
-                }));
-            }
+    function hideLoading() {
+        loadingOverlay.style.display = 'none';
+    }
 
-            async function updateCardTimes(cards, folderPath) {
-                const subFolders = await listSubFolders(folderPath);
-                for (const folder of subFolders) {
-                    const folderName = decodeURIComponent(folder.name);
-                    const matchingCard = cards.find(card => card.title.trim() === folderName.trim());
+    const storage = firebase.storage();
+    const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+    const todayFolderPath = `${koreanDate}`;
 
-                    if (matchingCard) {
-                        const filesMetadata = await getFolderFilesMetadata(folder.fullPath);
-                        if (filesMetadata.length > 0) {
-                            const latestFile = filesMetadata.reduce((latest, current) =>
-                                new Date(current.updated) > new Date(latest.updated) ? current : latest
-                            );
-                            const updatedDate = new Date(latestFile.updated);
-                            const formattedDate = updatedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-                            const formattedTime = updatedDate.toLocaleTimeString("en-US", { timeZone: "Asia/Seoul", hour12: false });
-                            matchingCard.text = `${formattedDate} ${formattedTime}`;
-                        } else {
-                            matchingCard.text = 'No files found';
-                        }
-                    }
+    async function listSubFolders(folderPath) {
+        const folderRef = storage.ref(folderPath);
+        const result = await folderRef.listAll();
+        return result.prefixes;
+    }
+
+    async function getFolderFilesMetadata(folderPath) {
+        const folderRef = storage.ref(folderPath);
+        const result = await folderRef.listAll();
+        return await Promise.all(result.items.map(async (itemRef) => {
+            const metadata = await itemRef.getMetadata();
+            return { fileName: itemRef.name, updated: metadata.updated };
+        }));
+    }
+
+    async function updateCardTimes(cards, folderPath) {
+        const subFolders = await listSubFolders(folderPath);
+        for (const folder of subFolders) {
+            const folderName = decodeURIComponent(folder.name);
+            const matchingCard = cards.find(card => card.title.trim() === folderName.trim());
+
+            if (matchingCard) {
+                const filesMetadata = await getFolderFilesMetadata(folder.fullPath);
+                if (filesMetadata.length > 0) {
+                    const latestFile = filesMetadata.reduce((latest, current) =>
+                        new Date(current.updated) > new Date(latest.updated) ? current : latest
+                    );
+                    const updatedDate = new Date(latestFile.updated);
+                    const formattedDate = updatedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                    const formattedTime = updatedDate.toLocaleTimeString("en-US", { timeZone: "Asia/Seoul", hour12: false });
+                    matchingCard.text = `${formattedDate} ${formattedTime}`;
+                } else {
+                    matchingCard.text = 'No files found';
                 }
             }
+        }
+    }
 
-            document.addEventListener("DOMContentLoaded", () => {
-                const modal = document.getElementById('image-modal');
-                const modalImage = modal.querySelector('img');
+    document.addEventListener("DOMContentLoaded", () => {
+        const modal = document.getElementById('image-modal');
+        const modalImage = modal.querySelector('img');
 
-            document.body.addEventListener('click', (event) => {
-                if (event.target.tagName === 'IMG' && event.target.closest('.image-preview')) {
-                    modalImage.src = event.target.src; 
-                    modal.classList.add('show'); 
-                }
-            });
+        document.body.addEventListener('click', (event) => {
+            if (event.target.tagName === 'IMG' && event.target.closest('.image-preview')) {
+                modalImage.src = event.target.src; 
+                modal.classList.add('show'); 
+            }
+        });
 
-            modal.addEventListener('click', () => {
-                modal.classList.remove('show');
-                modalImage.src = '';
-                });
-            });
+        modal.addEventListener('click', () => {
+            modal.classList.remove('show');
+            modalImage.src = '';
+        });
+    });
 
-            const data = await fetchCSV('guild.csv');
-            await updateCardTimes(data, todayFolderPath);
-            createCards(data);
-        })();
+    try {
+        showLoading();
+
+        const data = await fetchCSV('guild.csv'); 
+        await updateCardTimes(data, todayFolderPath);
+        createCards(data);
+    } catch (error) {
+        console.error("An error occurred:", error);
+    } finally {
+        hideLoading();
+    }
+})();
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
