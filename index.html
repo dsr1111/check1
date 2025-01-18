@@ -55,8 +55,42 @@
         padding: 5px;
         margin-top: 10px;
     }
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+    }
+    .modal-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-content img {
+        max-width: 75vw;
+        max-height: 85vh;
+        border: 2px solid white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
 </style>
 <body>
+    <div class="modal-overlay" id="image-modal">
+        <div class="modal-content">
+            <img src="" alt="Enlarged Image">
+        </div>
+    </div>
+
     <div class="main-container">
         <div id="card-container" class="d-flex flex-wrap gap-3 justify-content-center"></div>
     </div>
@@ -66,6 +100,7 @@
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
+    
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyB687ow_NvAJxJdLaSfke6hOalFujAeJ50",
@@ -111,13 +146,48 @@
                     <div class="card-body" style="${cardStyle}">
                         <h5 class="card-title" style="font-weight:bold;">${item.title}</h5>
                         <p class="card-text">제출시간: ${item.text}</p>
-                        <input type="file" class="form-control mb-3" accept="image/*" ${buttonDisabled ? 'disabled' : ''}>
-                        <div id="paste-area">복사한 이미지 붙여넣기<br>(Ctrl + V)</div>
+                        <div class="image-preview mb-3"></div>
+                        ${!isDatePresent ? `
+                            <input type="file" class="form-control mb-3" accept="image/*">
+                            <div id="paste-area">복사한 이미지 붙여넣기<br>(Ctrl + V)</div>
+                        ` : ''}
                         <button class="btn ${buttonClass} submit-btn w-100" ${buttonDisabled ? 'disabled' : ''}>${buttonText}</button>
                     </div>
                 `;
                 container.appendChild(card);
 
+                const imagePreview = card.querySelector('.image-preview');
+
+                if (isDatePresent) {
+                    const koreanDate = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                    const folderPath = `${koreanDate}/${item.title.trim()}`;
+
+                    const folderRef = storage.ref(folderPath);
+                    folderRef.listAll()
+                        .then((result) => {
+                            if (result.items.length > 0) {
+                                const imageRef = result.items[0];
+                                return imageRef.getDownloadURL();
+                            } else {
+                                throw new Error("이미지가 없습니다.");
+                            }
+                        })
+                        .then((url) => {
+                            const img = document.createElement('img');
+                            img.src = url;
+                            img.alt = "Uploaded Image";
+                            img.style.width = "250px";
+                            img.style.height = "140px";
+                            img.style.border = "1px solid #ddd";
+                            img.style.borderRadius = "4px";
+                            img.style.padding = "5px";
+                            imagePreview.appendChild(img);
+                        })
+                        .catch((error) => {
+                            imagePreview.textContent = "이미지를 가져올 수 없습니다.";
+                        });
+                }
+                
                 if (!isDatePresent) {
                     const submitBtn = card.querySelector('.submit-btn');
                     const fileInput = card.querySelector('input[type="file"]');
@@ -278,6 +348,23 @@
                     }
                 }
             }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const modal = document.getElementById('image-modal');
+                const modalImage = modal.querySelector('img');
+
+            document.body.addEventListener('click', (event) => {
+                if (event.target.tagName === 'IMG' && event.target.closest('.image-preview')) {
+                    modalImage.src = event.target.src; 
+                    modal.classList.add('show'); 
+                }
+            });
+
+            modal.addEventListener('click', () => {
+                modal.classList.remove('show');
+                modalImage.src = '';
+                });
+            });
 
             const data = await fetchCSV('guild.csv');
             await updateCardTimes(data, todayFolderPath);
