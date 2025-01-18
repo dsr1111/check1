@@ -238,6 +238,7 @@
                                 submitBtn.classList.remove('btn-primary');
                                 submitBtn.classList.add('btn-secondary');
                                 fileInput.setAttribute('disabled', true);
+                                location.reload();
                             } catch (error) {
                                 console.error("Upload failed", error.serverResponse || error.message);
                                 alert(`업로드 실패: ${error.serverResponse || error.message}`);
