@@ -156,7 +156,7 @@
                 card.style.width = '22rem';
 
                 const isDatePresent = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(item.text);
-                const cardStyle = isDatePresent ? 'background-color: #DFFFD6; color: #000;' : '';
+                const cardStyle = isDatePresent ? 'background-color: #DFFFD6; color: #000; border-radius: 5px;': '';
                 const buttonDisabled = isDatePresent;
                 const buttonClass = isDatePresent ? 'btn-secondary' : 'btn-primary';
                 const buttonText = isDatePresent ? '제출완료' : '제출하기';
@@ -357,29 +357,29 @@
     }
 
     async function updateCardTimes(cards, folderPath) {
-    const subFolders = await listSubFolders(folderPath);
+        const subFolders = await listSubFolders(folderPath);
 
-    // 병렬로 처리
-    await Promise.all(
-        subFolders.map(async (folder) => {
-            const folderName = decodeURIComponent(folder.name);
-            const matchingCard = cards.find(card => card.title.trim() === folderName.trim());
+        // 병렬로 처리
+        await Promise.all(
+            subFolders.map(async (folder) => {
+                const folderName = decodeURIComponent(folder.name);
+                const matchingCard = cards.find(card => card.title.trim() === folderName.trim());
 
-            if (matchingCard) {
-                const filesMetadata = await getFolderFilesMetadata(folder.fullPath);
-                if (filesMetadata.length > 0) {
-                    const latestFile = filesMetadata.reduce((latest, current) =>
-                        new Date(current.updated) > new Date(latest.updated) ? current : latest
-                    );
-                    const updatedDate = new Date(latestFile.updated);
-                    const formattedDate = updatedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-                    const formattedTime = updatedDate.toLocaleTimeString("en-US", { timeZone: "Asia/Seoul", hour12: false });
-                    matchingCard.text = `${formattedDate} ${formattedTime}`;
+                if (matchingCard) {
+                    const filesMetadata = await getFolderFilesMetadata(folder.fullPath);
+                    if (filesMetadata.length > 0) {
+                        const latestFile = filesMetadata.reduce((latest, current) =>
+                            new Date(current.updated) > new Date(latest.updated) ? current : latest
+                        );
+                        const updatedDate = new Date(latestFile.updated);
+                        const formattedDate = updatedDate.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+                        const formattedTime = updatedDate.toLocaleTimeString("en-US", { timeZone: "Asia/Seoul", hour12: false });
+                        matchingCard.text = `${formattedDate} ${formattedTime}`;
+                    }
                 }
-            }
-        })
-    );
-}
+            })
+        );
+    }
 
 
     document.addEventListener("DOMContentLoaded", () => {
